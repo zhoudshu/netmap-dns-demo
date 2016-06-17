@@ -18,7 +18,7 @@ Please Compile and install netmap according with README
 # cd examples/
 # make 
 # ./dns-resp -v
-    usage: dns-echo [-v] [-c] [-i ifa] [-i ifb] [-b burst] [-w wait_time] 
+    usage: dns-resp [-v] [-c] [-i ifa] [-i ifb] [-b burst] [-w wait_time] 
     Supported options:
     -v  if run with debug default close.
     -c  if used zerocopy default open.

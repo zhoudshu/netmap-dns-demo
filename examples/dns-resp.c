@@ -981,7 +981,7 @@ static void
 usage(void)
 {
     fprintf(stderr,
-            "usage: dns-echo [-v] [-c] [-i ifa] [-i ifb] [-b burst] [-w wait_time] \n\n");
+            "usage: dns-resp [-v] [-c] [-i ifa] [-i ifb] [-b burst] [-w wait_time] \n\n");
     fprintf(stderr,
               "Supported options:\n"
               "  -v  if run with debug default close.\n"
