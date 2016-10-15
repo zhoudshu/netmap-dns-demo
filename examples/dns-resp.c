@@ -32,6 +32,7 @@ int verbose = 0;
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pcap.h>
 #include <netdb.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
@@ -45,7 +46,7 @@ int verbose = 0;
 #include <resolv.h>
 
 #define IP_SIZE 16
-#define REQUEST_SIZE 100
+#define REQUEST_SIZE 1024
 #define PCAP_INTERFACENAME_SIZE 16
 #define FILTER_SIZE 200
 //#define ETHER_ADDR_LEN  6
@@ -443,20 +444,28 @@ unsigned int  extract_dns_request(struct dnsquery *dns_query, char *request){
     unsigned int i, j, k;
     char *curr = dns_query->qname;
     unsigned int size;
+    if(curr==NULL)
+        return 1;
 
     size = curr[0];
-
     j=0;
     i=1;
+   
     while(size > 0){
+        //D("%u size j %d u %u", size, j, i );
         for(k=0; k<size; k++){
+            if(j>=100)
+                return 1;
             request[j++] = curr[i+k];
         }
         request[j++]='.';
         i+=size;
         size = curr[i++];
     }
-    request[--j] = '\0';
+    //D("%u  i j %u ", i, j);
+    if (j>=1)
+       request[--j] = '\0';
+    
     return i;
 
 }
@@ -530,7 +539,8 @@ int answer_dns_query(char *buff, int n){
     struct dnsquery dns_query;
     struct dnshdr *dns_hdr;
 
-    char request[REQUEST_SIZE];
+    char request[REQUEST_SIZE]= {0};
+    
     char src_ip[IP_SIZE], dst_ip[IP_SIZE];
     u_int16_t port;
 
@@ -539,7 +549,13 @@ int answer_dns_query(char *buff, int n){
 
     //dump_hex_file(buff, n);
     extract_dns_data((const u_char*) buff, &dns_hdr, &dns_query, src_ip, dst_ip, &port);
+    if (dns_hdr == NULL){
+        return 1;
+    }
     unsigned int domain_len = extract_dns_request(&dns_query, request);
+    if(domain_len==1){
+        return -1;
+    }
     if (verbose)
         D("domain name %s", request); 
     /* if it is the request that we are looking for */
@@ -759,7 +775,12 @@ int echo_dns_query(char *buff, int n)
 
 int dns_packet_process(char *buff, int len)
 {
+    //if(len >256)
+    //    return 1;
+
     //echo_dns_query(buff, len);
+    //return len;
+
     return answer_dns_query(buff, len);
 }
 
@@ -824,6 +845,11 @@ process_rings(struct netmap_ring *rxring, struct netmap_ring *txring,
 
         if (verbose >= 1) D("echo: rx[%d] is DNS query", j);
         int send_len = dns_packet_process(rxbuf, rxring->slot[j].len);
+        if(send_len == -1){
+            j = nm_ring_next(rxring, j);
+            k = nm_ring_next(txring, k);
+            continue;
+        }
 
         /* swap packets */
         if (ts->buf_idx < 2 || rs->buf_idx < 2) {
